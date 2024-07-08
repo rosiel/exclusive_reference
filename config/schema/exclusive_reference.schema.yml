@@ -1,0 +1,7 @@
+field.storage.*.*.third_party.exclusive_reference:
+  type: mapping
+  label: 'Exclusive Reference settings'
+  mapping:
+    exclusive:
+      type: boolean
+      label: 'Is an exclusive reference'

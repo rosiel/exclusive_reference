@@ -1,0 +1,5 @@
+name: Exclusive Reference
+description: Limit a reference field so that a target can only be referenced once within this field.
+core_version_requirement: ^10 || ^11
+type: module
+package: Islandora

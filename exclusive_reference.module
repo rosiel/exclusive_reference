@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * @file
+ * Contains exclusive_reference.module.
+ */
+
+use Drupal\field\FieldConfigInterface;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Entity\FieldableEntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Entity\EntityInterface;
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function exclusive_reference_form_field_config_edit_form_alter(&$form, FormStateInterface $form_state) {
+  $field = $form_state->getFormObject()->getEntity();
+  if (is_a($field->getClass(), 'Drupal\Core\Field\EntityReferenceFieldItemList', true)) {
+    #Set third party setting
+
+    $form['field']['exclusive_reference'] = [
+      '#type' => 'fieldset',
+      '#tree' => FALSE,
+      '#title' => t('Exclusive Reference settings'),
+    ];
+
+    $form['field']['exclusive_reference']['is_exclusive'] = [
+      '#title' => t('Is this an exclusive reference field?'),
+      '#description' => t('A target can only appear once as the target of this field across the whole site.'),
+      '#type' => 'checkbox',
+      '#default_value' => $field->getFieldStorageDefinition()->getThirdPartySetting('exclusive_reference', 'is_exclusive', false),
+    ];
+
+    $form['#entity_builders'][] = 'exclusive_reference_field_config_edit_form_builder';
+  }
+}
+
+function exclusive_reference_field_config_edit_form_builder($entity_type, FieldConfigInterface $field, array &$form, FormStateInterface $form_state) {
+  $storage = $field->getFieldStorageDefinition();
+  if ($form_state->getValue('is_exclusive')) {
+    $storage->setThirdPartySetting('exclusive_reference', 'is_exclusive', true);
+    return;
+  }
+  $storage->unsetThirdPartySetting('exclusive_reference', 'is_exclusive');
+}
+
+/**
+ * Implements hook_entity_presave().
+ */
+function exclusive_reference_entity_presave3(EntityInterface $entity) {
+  # Check the entity is fieldable.
+  if (!is_a($entity, 'Drupal\Core\Entity\FieldableEntityInterface')) {
+    return;
+  }
+  # Load the field definitions.
+  $field_definitions = $entity->getFieldDefinitions();
+  # Find any that are entity reference and that are exclusive.
+  foreach ($field_definitions as $field_definition) {
+    $class = $field_definition->getClass();
+    if (is_a($field_definition->getClass(), 'Drupal\Core\Field\EntityReferenceFieldItemList', true)) {
+      # Load the storage config for this field.
+      $field_id = $entity->getEntityTypeId() . '.' . $field_definition->getName();
+      $field_storage = Drupal::entityTypeManager()->getStorage('field_storage_config')->load($field_id);
+      if ($field_storage) {
+        # If this field is not exclusive, continue.
+        if (!$field_storage->getThirdPartySetting('exclusive_reference', 'is_exclusive')) {
+          continue;
+        }
+        # This field is exclusive. Ensure the target is not already referenced.
+        $target_entity = 'foo';
+        # Throw an error.
+
+      }# Get third party settings
+      $a = 2;
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_bundle_field_info_alter().
+ */
+function exclusive_reference_entity_bundle_field_info_alter(&$fields, \Drupal\Core\Entity\EntityTypeInterface $entity_type, $bundle) {
+  foreach ($fields as $field) {
+    $field_storage_definition = $field->getFieldStorageDefinition();
+    if ($field_storage_definition instanceof Drupal\field\Entity\FieldStorageConfig) {
+      if ($field_storage_definition->getThirdPartySetting('exclusive_reference', 'is_exclusive')) {
+        $field->addConstraint('UniqueReference', []);
+      }
+    }
+
+  }
+}
